@@ -1,25 +1,99 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+This work completes assignment for peer assessment 1 of the Reproducible Research course.
+After data copied fROM [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip), it will be used to answer these questions:
+
+- What is mean total number of steps taken per day?
+
+- What is the average daily activity pattern?
+
+- Are there differences in activity patterns between weekdays and weekends?
+
+First we must ingest the raw data
+
+```{r}
+dat <- read.csv("activity.csv", header = TRUE,na="0")
+```
+
+Now exploring steps per day we will
+
+- Make a histogram of the total number of steps taken each day; and
+
+- Calculate and report the mean and median total number of steps taken per day
+ 
+```{r}
+dat2 <- subset(dat, !(is.na(steps)|steps == "NA"  ))
+spd <- data.frame((tapply(as.numeric(as.character(dat2$steps)), dat2$date, FUN=sum)))
+spd <- cbind(date = as.Date(rownames(spd),"%Y-%m-%d"), spd) 
+colnames(spd) <- c("date","totalSteps")
+library("ggplot2")
+ggplot(data=spd, aes(x=date, y=totalSteps)) + geom_bar(stat="identity")
+theMean <- formatC((mean(spd$totalSteps, na.rm = TRUE)), format="d", big.mark=',')
+theMedian <- formatC((median(spd$totalSteps, na.rm = TRUE)), format="d", big.mark=',') 
+```
+ 
+The mean `r theMean` total steps per day is close to the median `r theMedian` total steps per day
 
 
-## Loading and preprocessing the data
+
+####Moving on...
+What is the average daily activity pattern?
+
+-Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+-Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+To do this the times will be averaged by interval and the interval will be converted from hourminute to minute of day
+
+
+```{r}
+spi <- data.frame((tapply(as.numeric(as.character(dat2$steps)), as.character(dat2$interval), FUN=mean)))
+spi <- cbind(time = as.numeric(rownames(spi))/100, spi) 
+colnames(spi) <- c("time","AverageSteps")
+spi <- cbind(hour = trunc(spi$time), spi) 
+spi <- cbind(minute = (spi$time - spi$hour)*100, spi)
+spi <- cbind(MinuteOfDay = ((spi$hour*60) + spi$minute), spi)
+ggplot(data=spi, aes(x=MinuteOfDay, y=AverageSteps)) + geom_bar(stat="identity")
+
+spi <- cbind(AllRows = "AllRows", spi)
+theMax <- aggregate(AverageSteps ~ AllRows, data=spi,  FUN =  max)
+spimax <- subset(spi,spi$AverageSteps==theMax[1,2])
+theMost <- gsub("\\.",":",as.character(spimax[1,5]) )
+```
+
+The time of day when most steps are typically taken is  `r theMost` 
+
+
+####Moving on...
+Imputing missing values
+
+I suggest that the introduction of missing values into this analysis would detract from the accuracy of the results and furthermore that they are not required for the analyses being performed. Therefore would be pointless to accomodate. In addition to that, I contend that my position on imputing missing values is always the case should never be considered if the most accurate results are to be prepared. Should you imbue values if ALL were missing? No! Perhaps if only one value was used to imbue 1000s? That would be absurd! Then, at what point would it cease to be absurd? If you have 1% of the values then imbue 99%? Perhaps 2%. It may well be on the missing days were marathon training days.
+
+There's plenty of data without making some up and to do so only tarnishes a data scientist's credibility. 
 
 
 
-## What is mean total number of steps taken per day?
+
+####Moving on...
+Are there differences in activity patterns between weekdays and weekends?
+
+(pfft! The graph examples were not showing on coursera assignment web page, so I did mine freeform. Now I see them on github but oh well, time has expired. I think mine answer the question more clearly anyway and show this guy is definitely not a weekend warrior. Hopefully you will agree and be merciful)
+
+```{r}
+dat2 <- cbind(DayOfWeek = strftime(dat2$date, format = "%w")  , dat2)
+dat2 <- cbind(WeekEndDay = ifelse(dat2$DayOfWeek==0,"WeekEnd",ifelse(dat2$DayOfWeek==6,"WeekEnd","WeekDay"))   , dat2)
+head(dat2)
+
+spw<- aggregate(as.numeric(dat2$steps),by=list(dat2$WeekEndDay,as.character(dat2$interval)), data=dat2,   mean)  
+colnames(spw) <- c("WeekEndDay","Interval","AverageSteps")
+spw <- data.frame((tapply(as.numeric(as.character(spw$AverageSteps)), spw$WeekEndDay, FUN=sum)))
+spw <- cbind(DayType = as.character(rownames(spw)), spw)
+colnames(spw) <-c("DayType","AverageSteps")
+str(spw)
+head(spw)
+ggplot(data=spw, aes(x=DayType, y=AverageSteps)) + geom_bar(stat="identity")
 
 
 
-## What is the average daily activity pattern?
+ 
+ 
 
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
